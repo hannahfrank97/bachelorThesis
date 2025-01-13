@@ -87,6 +87,8 @@ services:
       - "3306:3306"
     networks:
       - app-network
+    volumes:
+      - ./data/DATA.sql:/docker-entrypoint-initdb.d/DATA.sql
 
   mongo:
     image: mongo
@@ -95,6 +97,8 @@ services:
       - "27017:27017"
     networks:
       - app-network
+    volumes:
+      - ./data/DATA.json:/docker-entrypoint-initdb.d/DATA.json
 
 networks:
   app-network:
