@@ -8,6 +8,7 @@
     "database.password": "test",
     "database.server.name": "mysql",
     "database.include.list": "mysql_database",
+    "database.allowPublicKeyRetrieval": "true",
     "table.include.list": "mysql_database.DATA",
     "database.history.kafka.bootstrap.servers": "kafka:9092",
     "database.history.kafka.topic": "dbhistory.mysql",
