@@ -1,18 +1,20 @@
 {
   "name": "mongodb-connector",
-  "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
-  "mongodb.connection.string": "mongodb://root:test@mongo-container:27017/mongo_database?authSource=admin",
-  "mongodb.name": "mongo_database",
-  "mongodb.hosts": "rs0/mongo-container:27017",
-  "mongodb.user": "root",
-  "mongodb.password": "test",
-  "mongodb.authsource": "admin",
-  "database.include.list": "mongo_database",
-  "collection.include.list": "mongo_database.DATA",
-  "database.history.kafka.bootstrap.servers": "kafka:9092",
-  "database.history.kafka.topic": "dbhistory.mongo",
-  "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-  "transforms": "unwrap",
-  "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState"
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
+    "mongodb.connection.string": "mongodb://root:test@mongo-container:27017/mongo_database?authSource=admin",
+    "mongodb.name": "mongo_database",
+    "mongodb.hosts": "rs0/mongo-container:27017",
+    "mongodb.user": "root",
+    "mongodb.password": "test",
+    "mongodb.authsource": "admin",
+    "database.include.list": "mongo_database",
+    "collection.include.list": "mongo_database.DATA",
+    "database.history.kafka.bootstrap.servers": "kafka:9092",
+    "database.history.kafka.topic": "dbhistory.mongo",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState"
+  }
 }
