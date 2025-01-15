@@ -97,6 +97,10 @@ services:
       - "27017:27017"
     networks:
       - app-network
+    environment:
+        MONGO_INITDB_ROOT_USERNAME: root
+        MONGO_INITDB_ROOT_PASSWORD: test
+        MONGO_INITDB_DATABASE: mongo_database
     volumes:
       - ./data/DATA.json:/docker-entrypoint-initdb.d/DATA.json
 
