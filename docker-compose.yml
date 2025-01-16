@@ -101,9 +101,10 @@ services:
         MONGO_INITDB_ROOT_USERNAME: root
         MONGO_INITDB_ROOT_PASSWORD: test
         MONGO_INITDB_DATABASE: mongo_database
+    command: [ "mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile" ]
     volumes:
+    - ./mongo-keyfile:/etc/mongo-keyfile
     - ./data/DATA.js:/docker-entrypoint-initdb.d/DATA.js
-
 
 networks:
   app-network:
