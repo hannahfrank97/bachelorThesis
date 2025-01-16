@@ -1,15 +1,16 @@
-create table DATA (
-	id INT,
-	first_name VARCHAR(50),
-	last_name VARCHAR(50),
-	email VARCHAR(50),
-	address VARCHAR(50),
-	address2 VARCHAR(50),
-	products VARCHAR(50),
-	car VARCHAR(50),
-	moviegenre VARCHAR(50),
-	slogan VARCHAR(50)
+CREATE TABLE DATA (
+    id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(50),
+    address VARCHAR(50),
+    address2 VARCHAR(50),
+    products VARCHAR(50),
+    car VARCHAR(50),
+    moviegenre VARCHAR(50),
+    slogan VARCHAR(50)
 );
+
 insert into DATA (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan) values (1, 'Michelina', 'Stivani', 'mstivani0@shareasale.com', '1 Melody Road', '15th Floor', 'Cheese - Roquefort Pappillon', 'Oldsmobile', 'Drama|Romance', 'benchmark global synergies');
 insert into DATA (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan) values (2, 'Esta', 'Breewood', 'ebreewood1@artisteer.com', '6364 Dixon Hill', 'Suite 68', 'Munchies Honey Sweet Trail Mix', 'Lamborghini', 'Crime|Drama|Mystery|Thriller|War', 'benchmark impactful methodologies');
 insert into DATA (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan) values (3, 'Abbie', 'Creed', 'acreed2@answers.com', '1045 Dexter Court', 'PO Box 6691', 'Roe - Lump Fish, Red', 'Mazda', 'Sci-Fi', 'enable e-business web-readiness');
