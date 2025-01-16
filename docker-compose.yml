@@ -78,7 +78,7 @@ services:
       - app-network
 
   mysql:
-    image: mysql
+    image: mysql:8.0
     container_name: mysql-container
     environment:
       MYSQL_ROOT_PASSWORD: test
@@ -89,6 +89,12 @@ services:
       - app-network
     volumes:
       - ./data/DATA.sql:/docker-entrypoint-initdb.d/DATA.sql
+    command:
+      --server-id=1
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --gtid-mode=ON
+      --enforce-gtid-consistency=ON
 
   mongo:
     image: mongo
