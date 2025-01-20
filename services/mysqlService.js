@@ -4,7 +4,7 @@ let connection;
 
 async function connectToMySql() {
     connection = await mysql.createConnection({
-        host: 'localhost',
+        host: 'mysql-container',
         user: 'root',
         password: 'test',
         database: 'mysql_database'
