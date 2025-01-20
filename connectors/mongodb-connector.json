@@ -14,6 +14,11 @@
     "database.history.kafka.topic": "dbhistory.mongo",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+    "snapshot.mode": "initial",
+    "max.batch.size": 1024,
+    "max.queue.size": 8192,
+    "poll.interval.ms": 1000
   }
 }
