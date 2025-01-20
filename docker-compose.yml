@@ -4,6 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: node-app
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_JUTE_MAXBUFFER: 4194304 # 4 MB
     ports:
       - "3000:3000"
     healthcheck:
@@ -22,33 +26,39 @@ services:
       - app-network
 
   kafka:
-    image: confluentinc/cp-kafka
+    image: confluentinc/cp-kafka:7.8.0
     container_name: kafka-container
     platform: linux/amd64
+    depends_on:
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
+      - "29092:29092"
     environment:
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-    depends_on:
-      - zookeeper
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     healthcheck:
-     test: [ "CMD-SHELL", "kafka-topics --list --bootstrap-server localhost:9092 || exit 1" ]
-     interval: 30s
-     timeout: 10s
-     retries: 5
+      test: nc -z localhost 9092 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     networks:
       - app-network
+    user: "appuser:appuser"
 
   zookeeper:
-    image: confluentinc/cp-zookeeper
+    image: confluentinc/cp-zookeeper:7.8.0
     container_name: zookeeper-container
     platform: linux/amd64
     ports:
@@ -56,28 +66,51 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_MAX_CLIENT_CNXNS: 0
+      ZOOKEEPER_ADMIN_ENABLE_SERVER: "false"
+      KAFKA_OPTS: "-Djute.maxbuffer=8388608 -Xmx512M -Xms512M"
     healthcheck:
-     test: [ "CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok || exit 1" ]
-     interval: 10s
-     timeout: 5s
-     retries: 3
+      test: echo stat | nc localhost 2181
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
     networks:
       - app-network
 
   debezium:
-    image: quay.io/debezium/connect:1.9
+    image: debezium/connect:2.4
     container_name: debezium-container
     platform: linux/amd64
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
     ports:
       - "8083:8083"
     environment:
-      BOOTSTRAP_SERVERS: kafka:9092
-      GROUP_ID: 1
+      GROUP_ID: "1"
       CONFIG_STORAGE_TOPIC: my_connect_configs
       OFFSET_STORAGE_TOPIC: my_connect_offsets
       STATUS_STORAGE_TOPIC: my_connect_statuses
-    depends_on:
-      - kafka
+      BOOTSTRAP_SERVERS: kafka:9092
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    volumes:
+      - ./register-connectors.sh:/usr/local/bin/register-connectors.sh:ro
+      - ./connectors/mongodb-connector.json:/config/mongodb-connector.json:ro
+      - ./connectors/mysql-connector.json:/config/mysql-connector.json:ro
+    entrypoint: [ "/bin/bash", "-c", "/usr/local/bin/register-connectors.sh" ]
     networks:
       - app-network
 
@@ -100,23 +133,30 @@ services:
       --gtid-mode=ON
       --enforce-gtid-consistency=ON
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ptest"]
       interval: 10s
       timeout: 5s
-      retries: 2
+      retries: 5
+      start_period: 40s
 
   mongo:
-    image: mongo
+    image: mongo:7.0
     container_name: mongo-container
-    ports:
-      - "27017:27017"
-    networks:
-      - app-network
+    platform: linux/amd64
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: test
-      MONGO_INITDB_DATABASE: mongo_database
-    command: [ "mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile" ]
+    ports:
+      - "27017:27017"
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - app-network
     volumes:
       - ./mongo-keyfile:/etc/mongo-keyfile
       - ./data/DATA.js:/docker-entrypoint-initdb.d/DATA.js
@@ -124,6 +164,10 @@ services:
 
 volumes:
   mongo-data:
+  kafka-data:
+    driver: local
+  zookeeper-data:
+  zookeeper-logs:
 
 networks:
   app-network:
