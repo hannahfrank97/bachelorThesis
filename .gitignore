@@ -1,2 +1,7 @@
 node_modules
 .env
+data/kafka/cleaner-offset-checkpoint
+data/kafka/log-start-offset-checkpoint
+data/kafka/meta.properties
+data/kafka/recovery-point-offset-checkpoint
+data/kafka/replication-offset-checkpoint
