@@ -1,7 +1,14 @@
 node_modules
 .env
-data/kafka/cleaner-offset-checkpoint
-data/kafka/log-start-offset-checkpoint
-data/kafka/meta.properties
-data/kafka/recovery-point-offset-checkpoint
-data/kafka/replication-offset-checkpoint
+# Kafka data
+data/kafka/
+data/zookeeper/
+
+# MongoDB data
+data/db/
+mongo-data/
+
+# Other data directories
+**/data/*
+!data/DATA.js
+!data/DATA.sql
