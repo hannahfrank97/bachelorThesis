@@ -7,14 +7,17 @@ services:
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
       interval: 30s
       timeout: 10s
       retries: 2
     depends_on:
-      - kafka
-      - mysql
-      - mongo
+      kafka:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_started
     networks:
       - app-network
 
@@ -25,21 +28,22 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 1
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     depends_on:
-      zookeeper:
-        condition: service_healthy
+      - zookeeper
     healthcheck:
-      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
-      interval: 10s
-      timeout: 5s
-      retries: 2
+     test: [ "CMD-SHELL", "kafka-topics --list --bootstrap-server localhost:9092 || exit 1" ]
+     interval: 30s
+     timeout: 10s
+     retries: 5
     networks:
       - app-network
 
@@ -50,13 +54,13 @@ services:
     ports:
       - "2181:2181"
     environment:
-        ZOOKEEPER_CLIENT_PORT: 2181
-        ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     healthcheck:
-      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 2
+     test: [ "CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok || exit 1" ]
+     interval: 10s
+     timeout: 5s
+     retries: 3
     networks:
       - app-network
 
@@ -95,6 +99,11 @@ services:
       --binlog-format=ROW
       --gtid-mode=ON
       --enforce-gtid-consistency=ON
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 2
 
   mongo:
     image: mongo
@@ -104,13 +113,17 @@ services:
     networks:
       - app-network
     environment:
-        MONGO_INITDB_ROOT_USERNAME: root
-        MONGO_INITDB_ROOT_PASSWORD: test
-        MONGO_INITDB_DATABASE: mongo_database
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: test
+      MONGO_INITDB_DATABASE: mongo_database
     command: [ "mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile" ]
     volumes:
-    - ./mongo-keyfile:/etc/mongo-keyfile
-    - ./data/DATA.js:/docker-entrypoint-initdb.d/DATA.js
+      - ./mongo-keyfile:/etc/mongo-keyfile
+      - ./data/DATA.js:/docker-entrypoint-initdb.d/DATA.js
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
 
 networks:
   app-network:
