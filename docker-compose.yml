@@ -90,26 +90,35 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      mysql:
-        condition: service_healthy
       mongo:
+        condition: service_healthy
+      mysql:
         condition: service_healthy
     ports:
       - "8083:8083"
     environment:
+      BOOTSTRAP_SERVERS: kafka:9092
       GROUP_ID: "1"
       CONFIG_STORAGE_TOPIC: my_connect_configs
       OFFSET_STORAGE_TOPIC: my_connect_offsets
       STATUS_STORAGE_TOPIC: my_connect_statuses
-      BOOTSTRAP_SERVERS: kafka:9092
       KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "localhost"
+      CONNECT_REST_HOST_NAME: "0.0.0.0"
+      CONNECT_REST_PORT: 8083
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      ADVERTISED_HOST_NAME: "0.0.0.0"
     volumes:
-      - ./register-connectors.sh:/usr/local/bin/register-connectors.sh:ro
-      - ./connectors/mongodb-connector.json:/config/mongodb-connector.json:ro
-      - ./connectors/mysql-connector.json:/config/mysql-connector.json:ro
+      - ./register-connectors.sh:/usr/local/bin/register-connectors.sh
+      - ./connectors/mongodb-connector.json:/config/mongodb-connector.json
+      - ./connectors/mysql-connector.json:/config/mysql-connector.json
+      - kafka-logs:/var/log/kafka
+    user: "root"
     entrypoint: [ "/bin/bash", "-c", "/usr/local/bin/register-connectors.sh" ]
     networks:
       - app-network
@@ -168,6 +177,7 @@ volumes:
     driver: local
   zookeeper-data:
   zookeeper-logs:
+  kafka-logs:
 
 networks:
   app-network:
