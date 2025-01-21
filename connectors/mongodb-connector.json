@@ -17,6 +17,8 @@
     "key.converter.schemas.enable": "false",
     "value.converter.schemas.enable": "false",
     "snapshot.mode": "initial",
+    "topic.prefix": "mongodb",
+    "mongodb.members.auto.discover": false, 
     "max.batch.size": 1024,
     "max.queue.size": 8192,
     "poll.interval.ms": 1000
