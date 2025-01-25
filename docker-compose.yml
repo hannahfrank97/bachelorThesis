@@ -171,6 +171,23 @@ services:
       - ./data/DATA.js:/docker-entrypoint-initdb.d/DATA.js
       - mongo-data:/data/db
 
+  mongo-init-replica:
+    image: mongo:7.0
+    container_name: mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: >
+      /bin/bash -c "
+        echo 'Waiting for Mongo replica set to be ready...';
+        sleep 3;
+        mongosh --host mongo-container:27017 -u root -p test --authenticationDatabase admin --eval 'rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo-container:27017\"}]})'
+      "
+
+
+
 volumes:
   mongo-data:
   kafka-data:
