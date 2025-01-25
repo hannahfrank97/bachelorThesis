@@ -2,9 +2,9 @@
   "name": "mongodb-connector",
   "config": {
     "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
-    "mongodb.connection.string": "mongodb://root:test@mongo-container:27017/mongo_database?authSource=admin",
+    "mongodb.connection.string": "mongodb://root:test@mongo:27017/mongo_database?authSource=admin&replicaSet=rs0",
     "mongodb.name": "mongo_database",
-    "mongodb.hosts": "rs0/mongo-container:27017",
+    "mongodb.hosts": "rs0/mongo:27017",
     "mongodb.user": "root",
     "mongodb.password": "test",
     "mongodb.authsource": "admin",
@@ -21,6 +21,8 @@
     "mongodb.members.auto.discover": false, 
     "max.batch.size": 1024,
     "max.queue.size": 8192,
-    "poll.interval.ms": 1000
+    "poll.interval.ms": 1000,
+    "offset.storage.topic": "connect-offsets"
+
   }
 }
