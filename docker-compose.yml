@@ -157,7 +157,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: test
     ports:
       - "27017:27017"
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    command: ["mongod", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile"]
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
       interval: 30s
