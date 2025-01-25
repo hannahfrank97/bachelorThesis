@@ -1,5 +1,5 @@
 {
-  "name": "mysql-connector",
+  "name": "mysql-connectorv2",
   "config": {
     "connector.class": "io.debezium.connector.mysql.MySqlConnector",
     "database.hostname": "mysql",
@@ -7,13 +7,13 @@
     "database.user": "root",
     "database.password": "test",
     "database.server.name": "mysql",
-    "database.server.id": "1", 
+    "database.server.id": "2",
     "database.include.list": "mysql_database",
     "database.allowPublicKeyRetrieval": "true",
     "table.include.list": "mysql_database.DATA",
-    "database.history.kafka.bootstrap.servers": "kafka:9092",
     "database.history.kafka.topic": "dbhistory.mysql",
-    "include.schema.changes": "false",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+    "include.schema.changes": "true",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "key.converter.schemas.enable": "false",
@@ -24,6 +24,8 @@
     "max.queue.size": 8192,
     "poll.interval.ms": 1000,
     "transforms": "unwrap",
+    "schema.history.internal.kafka.topic": "mysql-schema-history",
     "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState"
+
   }
 }
