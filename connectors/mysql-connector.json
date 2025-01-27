@@ -11,7 +11,6 @@
     "database.include.list": "mysql_database",
     "database.allowPublicKeyRetrieval": "true",
     "table.include.list": "mysql_database.DATA",
-    "database.history.kafka.topic": "dbhistory.mysql",
     "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
     "include.schema.changes": "true",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -25,7 +24,12 @@
     "poll.interval.ms": 1000,
     "transforms": "unwrap",
     "schema.history.internal.kafka.topic": "mysql-schema-history",
-    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState"
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.add.fields": "op",
+    "transforms.unwrap.add.headers": "op",
+    "offset.storage.topic": "connect-offsets",
+    "exactly.once.support": "requested"
+
 
   }
 }
