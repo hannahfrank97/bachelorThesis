@@ -23,7 +23,10 @@
     "max.queue.size": 8192,
     "poll.interval.ms": 1000,
     "offset.storage.topic": "connect-offsets",
-    "capture_mode": "change_streams_update_full_with_pre_image"
-
+    "capture_mode": "change_streams_update_full_with_pre_image",
+    "exactly.once.support": "requested",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.add.fields": "op",
+    "transforms.unwrap.add.headers": "op"
   }
 }
