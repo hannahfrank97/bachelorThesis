@@ -12,22 +12,6 @@ async function connectToMongo() {
     return collection;
 }
 
-async function insertDataToMongo(data) {
-    await collection.insertOne(data);
-}
-
-async function updateDataInMongo(id, newData) {
-    await collection.updateOne({id: id}, {$set: newData});
-}
-
-async function deleteDataInMongo(id) {
-    await collection.deleteOne({id: id});
-}
-
-
 module.exports = {
     connectToMongo,
-    insertDataToMongo,
-    updateDataInMongo,
-    deleteDataInMongo
-}
+};
