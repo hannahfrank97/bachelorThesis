@@ -12,3 +12,5 @@ mongo-data/
 **/data/*
 !data/DATA.js
 !data/DATA.sql
+
+./consumer/node_modules
