@@ -20,7 +20,7 @@ while ! timeout 1 bash -c "echo > /dev/tcp/mongo/27017" 2>/dev/null; do
 done
 
 # Create log directory
-mkdir -p /var/log/kafka
+mkdir -p /var/log/consumer
 
 # Start Kafka Connect in the background
 /docker-entrypoint.sh start &
