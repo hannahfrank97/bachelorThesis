@@ -1,0 +1,18 @@
+{
+  "name": "consumer",
+  "version": "1.0.0",
+  "main": "consumer.js",
+  "scripts": {
+    "start": "node consumer.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "kafka Consumer for MongoDB and MySQL snchronization.",
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "mongodb": "^6.12.0",
+    "mysql2": "^3.12.0"
+  }
+}
