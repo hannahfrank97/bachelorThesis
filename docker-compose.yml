@@ -4,10 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: node-app
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_JUTE_MAXBUFFER: 4194304 # 4 MB
     ports:
       - "3000:3000"
     healthcheck:
@@ -27,7 +23,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.8.0
-    container_name: kafka-container
+    container_name: kafka-container  # Korrigiert
     platform: linux/amd64
     depends_on:
       zookeeper:
@@ -39,7 +35,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092  # Korrigiert
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -52,7 +48,7 @@ services:
       retries: 5
       start_period: 15s
     volumes:
-      - kafka-data:/var/lib/kafka/data
+      - kafka-data:/var/lib/kafka/data  # Korrigiert
     networks:
       - app-network
     user: "appuser:appuser"
@@ -97,16 +93,16 @@ services:
     ports:
       - "8083:8083"
     environment:
-      BOOTSTRAP_SERVERS: kafka:9092
+      BOOTSTRAP_SERVERS: kafka:9092  # Korrigiert
       GROUP_ID: "1"
       CONFIG_STORAGE_TOPIC: my_connect_configs
       OFFSET_STORAGE_TOPIC: my_connect_offsets
       STATUS_STORAGE_TOPIC: my_connect_statuses
-      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter  # Korrigiert
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter  # Korrigiert
       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
-      CONNECT_REST_ADVERTISED_HOST_NAME: "localhost"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "debezium-container"
       CONNECT_REST_HOST_NAME: "0.0.0.0"
       CONNECT_REST_PORT: 8083
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
@@ -117,7 +113,7 @@ services:
       - ./register-connectors.sh:/usr/local/bin/register-connectors.sh
       - ./connectors/mongodb-connector.json:/config/mongodb-connector.json
       - ./connectors/mysql-connector.json:/config/mysql-connector.json
-      - kafka-logs:/var/log/kafka
+      - consumer-logs:/var/log/consumer
     user: "root"
     entrypoint: [ "/bin/bash", "-c", "/usr/local/bin/register-connectors.sh" ]
     networks:
@@ -136,7 +132,7 @@ services:
     volumes:
       - ./data/DATA.sql:/docker-entrypoint-initdb.d/DATA.sql
     command:
-      --server-id=1
+      --server-id=2
       --log-bin=mysql-bin
       --binlog-format=ROW
       --gtid-mode=ON
@@ -182,11 +178,38 @@ services:
     command: >
       /bin/bash -c "
         echo 'Waiting for Mongo replica set to be ready...';
-        sleep 3;
-        mongosh --host mongo-container:27017 -u root -p test --authenticationDatabase admin --eval 'rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo-container:27017\"}]})'
-      "
+        until mongosh --host mongo-container:27017 -u root -p test --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")' > /dev/null 2>&1; do
+          echo 'MongoDB is not ready yet. Retrying in 5 seconds...';
+          sleep 5;
+        done;
+        echo 'MongoDB is ready. Initializing replica set...';
+        mongosh --host mongo-container:27017 -u root -p test --authenticationDatabase admin --eval '
+          const status = rs.status();
+          if (status.ok !== 1) {
+            rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo-container:27017\"}]});
+            print(\"Replica set initialized.\");
+          } else {
+            print(\"Replica set already initialized: \" + tojson(status));
+          }'
+        "
 
-
+  consumer:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    container_name: kafka-consumer
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    networks:
+      - app-network
+    environment:
+      KAFKA_CLIENT_ID: "sync-service"
+      KAFKA_BROKERS: "kafka:9092"
 
 volumes:
   mongo-data:
@@ -195,6 +218,7 @@ volumes:
   zookeeper-data:
   zookeeper-logs:
   kafka-logs:
+  consumer-logs:
 
 networks:
   app-network:
