@@ -22,7 +22,8 @@
     "max.batch.size": 1024,
     "max.queue.size": 8192,
     "poll.interval.ms": 1000,
-    "offset.storage.topic": "connect-offsets"
+    "offset.storage.topic": "connect-offsets",
+    "capture_mode": "change_streams_update_full_with_pre_image"
 
   }
 }
