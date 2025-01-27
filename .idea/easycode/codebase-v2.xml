@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="com.obiscr.chatgpt.settings.EasyCodeState">
+    <option name="projectFiles" value="$PROJECT_DIR$/connectors/mongodb-connector.json;/Users/hannahfrank/Documents/GitHub/bachelorThesis/connectors/mysql-connector.json;/Users/hannahfrank/Documents/GitHub/bachelorThesis/consumer/services/mongoDBService.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/consumer/services/mysqlService.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/consumer/consumer.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/consumer/package-lock.json;/Users/hannahfrank/Documents/GitHub/bachelorThesis/consumer/package.json;/Users/hannahfrank/Documents/GitHub/bachelorThesis/consumer/service.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/data/DATA.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/data/DATA.sql;/Users/hannahfrank/Documents/GitHub/bachelorThesis/services/mongodbService.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/services/mysqlService.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/index.js;/Users/hannahfrank/Documents/GitHub/bachelorThesis/package-lock.json;/Users/hannahfrank/Documents/GitHub/bachelorThesis/package.json;/Users/hannahfrank/Documents/GitHub/bachelorThesis/README.md" />
+  </component>
+</project>
