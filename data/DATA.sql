@@ -111,3 +111,14 @@ insert into DATA (id, first_name, last_name, email, address, address2, products,
 insert into DATA (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan) values (98, 'Dreddy', 'Stook', 'dstook2p@bigcartel.com', '916 Fremont Pass', 'Suite 47', 'Bread - Kimel Stick Poly', 'Ford', 'Drama', 'reinvent back-end users');
 insert into DATA (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan) values (99, 'Natty', 'Ferronel', 'nferronel2q@hubpages.com', '728 Ryan Point', 'Suite 81', 'Rice - Aborio', 'Nissan', 'Documentary', 'transition frictionless interfaces');
 insert into DATA (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan) values (100, 'Rowe', 'Fortnam', 'rfortnam2r@digg.com', '92 Calypso Place', '9th Floor', 'Pastry - Cherry Danish - Mini', 'Nissan', 'Drama', 'expedite enterprise portals');
+
+-- Enable binary logging if not already enabled
+SET GLOBAL binlog_format = 'ROW';
+SET GLOBAL binlog_row_image = 'FULL';
+
+-- Make sure the table is using the correct engine
+ALTER TABLE DATA ENGINE = InnoDB;
+
+-- Grant necessary permissions to the root user
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'root'@'%';
+FLUSH PRIVILEGES;
