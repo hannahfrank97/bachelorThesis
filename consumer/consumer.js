@@ -9,6 +9,7 @@ const {
     insertDataToMongo,
     updateDataInMongo,
     deleteDataInMongo,
+    connectToMongo,
 } = require('./services/mongoDBService');
 
 // Configuring Kafka connection
@@ -25,8 +26,12 @@ async function initialize() {
         console.log('Initializing MySQL connection...');
         await connectToMySql();
         console.log('MySQL connection initialized successfully.');
+
+        console.log('Initializing MongoDB connection...');
+        await connectToMongo();
+        console.log('MongoDB connection initialized successfully.');
     } catch (error) {
-        console.error('Failed to initialize MySQL connection:', error);
+        console.error('Failed to initialize MySQL or MongoDB connection:', error);
         throw error;
     }
 }
@@ -35,20 +40,20 @@ async function startConsumer() {
     try {
         // Initialize connections first
         await initialize();
-        
+
         console.log('Starting Kafka Consumer...');
         await consumer.connect();
         console.log('Kafka Consumer connected.');
 
         // Subscribing to topics with explicit topic assignments
-        await consumer.subscribe({ 
+        await consumer.subscribe({
             topics: [
                 'mysql.mysql_database.DATA',
                 'mongodb.mongo_database.DATA'
             ],
-            fromBeginning: true 
+            fromBeginning: true
         });
-        
+
         console.log('Subscribed to topics:', [
             'mysql.mysql_database.DATA',
             'mongodb.mongo_database.DATA'
@@ -62,7 +67,7 @@ async function startConsumer() {
                 try {
                     const data = JSON.parse(msgValue);
                     const op = data.op || data.__op || '';
-                    
+
                     console.log('Parsed data:', data);
                     console.log('Operation:', op);
 
@@ -87,7 +92,7 @@ async function startConsumer() {
 async function handleMySQLtoMongo(op, data) {
     console.log(`[MySQL->MongoDB] Raw operation: ${op}`);
     console.log(`[MySQL->MongoDB] Raw data:`, data);
-    
+
     try {
         // Clean up the MySQL data before sending to MongoDB
         const cleanData = {
@@ -123,25 +128,56 @@ async function handleMySQLtoMongo(op, data) {
 // MongoDB -> MySQL
 async function handleMongotoMySQL(op, data) {
     console.log(`[MongoDB->MySQL] Operation: ${op}, Data:`, data);
+
     try {
-        // Clean up the MongoDB data before sending to MySQL
+        let afterDoc = {};
+        if (data.after) {
+            try {
+                afterDoc = typeof data.after === 'string' ? JSON.parse(data.after) : data.after;
+            } catch (parseError) {
+                console.error('[MongoDB->MySQL] Error parsing data.after:', parseError);
+                throw parseError;
+            }
+        }
+        console.log('[MongoDB->MySQL] Parsed afterDoc:', afterDoc);
+
+        let resolvedId = null;
+
+        if (afterDoc.hasOwnProperty('id')) {
+            resolvedId = afterDoc.id;
+            console.log(`[MongoDB->MySQL] ✅ Found id directly in afterDoc:`, resolvedId, `(Type: ${typeof resolvedId})`);
+        }
+
+        if (!resolvedId && afterDoc._id && afterDoc._id.$oid) {
+            resolvedId = afterDoc._id.$oid;
+            console.warn('[MongoDB->MySQL] ⚠️ Using _id.$oid as fallback ID:', resolvedId);
+        }
+
+        if (resolvedId !== null) {
+            console.log(`[MongoDB->MySQL] ✅ Final resolvedId:`, resolvedId, `(Type: ${typeof resolvedId})`);
+        } else {
+            console.warn(`[MongoDB->MySQL] ⚠️ No valid ID could be resolved`);
+        }
+
         const cleanData = {
-            // Ensure we get the id, with a fallback chain
-            id: data.id || (data._id ? parseInt(data._id.toString(), 10) : null),
-            first_name: data.first_name || null,
-            last_name: data.last_name || null,
-            email: data.email || null,
-            address: data.address || null,
-            address2: data.address2 || null,
-            products: data.products || null,
-            car: data.car || null,
-            moviegenre: data.moviegenre || null,
-            slogan: data.slogan || null
+            id: resolvedId,
+            first_name: afterDoc.first_name || null,
+            last_name: afterDoc.last_name || null,
+            email: afterDoc.email || null,
+            address: afterDoc.address || null,
+            address2: afterDoc.address2 || null,
+            products: afterDoc.products || null,
+            car: afterDoc.car || null,
+            moviegenre: afterDoc.moviegenre || null,
+            slogan: afterDoc.slogan || null
         };
 
-        // Only proceed if we have a valid ID
-        if (!cleanData.id) {
-            throw new Error('Invalid or missing ID in data');
+        console.log('[MongoDB->MySQL] ✅ Clean data:', cleanData);
+        console.log('[MongoDB->MySQL] ✅ cleanData.id:', cleanData.id, `(Type: ${typeof cleanData.id})`);
+
+        if (!cleanData.id || (typeof cleanData.id === 'number' && isNaN(cleanData.id))) {
+            console.error(`[MongoDB->MySQL] ❌ Invalid ID detected:`, cleanData.id);
+            throw new Error('Invalid or missing ID in data: ' + JSON.stringify(cleanData));
         }
 
         if (op === 'c') {
@@ -152,7 +188,7 @@ async function handleMongotoMySQL(op, data) {
             await deleteDataInMysql(cleanData.id);
         }
     } catch (err) {
-        console.error('[MongoDB->MySQL] Error:', err);
+        console.error('[MongoDB->MySQL] ❌ Error:', err);
     }
 }
 
