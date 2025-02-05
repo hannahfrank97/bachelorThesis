@@ -1,5 +1,5 @@
-const {connectToMySql} = require('./services/mysqlService');
-const {connectToMongo} = require('./services/mongodbService');
+const {connectToMySql} = require('./consumer/services/mysqlService');
+const {connectToMongo} = require('./consumer/services/mongoDBService');
 const {startConsumer} = require("./consumer/consumer");
 
 const app = require('./consumer/service');
