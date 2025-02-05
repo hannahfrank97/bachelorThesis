@@ -167,32 +167,6 @@ services:
       - ./data/DATA.js:/docker-entrypoint-initdb.d/DATA.js
       - mongo-data:/data/db
 
-  mongo-init-replica:
-    image: mongo:7.0
-    container_name: mongo-init
-    depends_on:
-      mongo:
-        condition: service_healthy
-    networks:
-      - app-network
-    command: >
-      /bin/bash -c "
-        echo 'Waiting for Mongo replica set to be ready...';
-        until mongosh --host mongo-container:27017 -u root -p test --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")' > /dev/null 2>&1; do
-          echo 'MongoDB is not ready yet. Retrying in 5 seconds...';
-          sleep 5;
-        done;
-        echo 'MongoDB is ready. Initializing replica set...';
-        mongosh --host mongo-container:27017 -u root -p test --authenticationDatabase admin --eval '
-          const status = rs.status();
-          if (status.ok !== 1) {
-            rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo-container:27017\"}]});
-            print(\"Replica set initialized.\");
-          } else {
-            print(\"Replica set already initialized: \" + tojson(status));
-          }'
-        "
-
   consumer:
     build:
       context: ./consumer
