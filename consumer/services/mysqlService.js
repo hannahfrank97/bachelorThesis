@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 let connection;
 
 /**
- * Initialisiert die MySQL-Verbindung.
+ * Initializing MongoDB to MySQL.
  */
 async function connectToMySql() {
     try {

@@ -160,7 +160,7 @@ module.exports = {
     startConsumer,
 };
 
-// Starting the consumer only when
+// Starting the consumer only when this file is run directly
 if (require.main === module) {
     startConsumer().catch((err) => console.error('Failed to start consumer:', err));
 }
