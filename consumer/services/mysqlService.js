@@ -8,7 +8,7 @@ let connection;
 async function connectToMySql() {
     try {
         connection = await mysql.createConnection({
-            host: 'mysql-container', // Name des MySQL-Containers im Docker-Netzwerk
+            host: 'mysql',
             user: 'root',
             password: 'test',
             database: 'mysql_database'
@@ -17,13 +17,13 @@ async function connectToMySql() {
         return connection;
     } catch (err) {
         console.error("Error connecting to MySQL:", err);
-        throw err; // Weiterwerfen des Fehlers zur Handhabung im Consumer
+        throw err;
     }
 }
 
 /**
- * Fügt Daten in MySQL ein oder aktualisiert sie bei Konflikten.
- * @param {Object} data - Die Daten, die eingefügt oder aktualisiert werden sollen.
+ * Adding data to mysql or updating it if it already exists.
+ * @param {Object} data - the data that should be inserted or updated
  */
 async function insertDataToMySql(data) {
     if (!connection) {
@@ -86,8 +86,8 @@ async function insertDataToMySql(data) {
 }
 
 /**
- * Aktualisiert Daten in MySQL.
- * @param {Object} data - Die Daten, die aktualisiert werden sollen.
+ * Updating data in MySQL.
+ * @param {Object} data
  */
 async function updateDataInMysql(data) {
     const sql = `
@@ -118,8 +118,8 @@ async function updateDataInMysql(data) {
 }
 
 /**
- * Löscht Daten aus MySQL basierend auf der ID.
- * @param {number} id - Die ID der zu löschenden Daten.
+ * Deletes the data with the given ID from MySQL.
+ * @param {number} id - the ID of the data to delete
  */
 async function deleteDataInMysql(id) {
     const sql = `
@@ -139,5 +139,6 @@ module.exports = {
     insertDataToMySql,
     updateDataInMysql,
     deleteDataInMysql,
-    connectToMySql
+    connectToMySql,
+    connection
 };
