@@ -1,14 +1,26 @@
-const { insertDataToMySql, updateDataInMysql, deleteDataInMysql, connectToMySql } = require('./consumer/services/mysqlService');
-const { insertDataToMongo, updateDataInMongo, deleteDataInMongo, connectToMongo } = require('./consumer/services/mongoDBService');
-const faker = require('faker');
+const {
+    insertDataToMySql,
+    updateDataInMysql,
+    deleteDataInMysql,
+    connectToMySql
+} = require('./consumer/services/mysqlService');
+const {
+    insertDataToMongo,
+    updateDataInMongo,
+    deleteDataInMongo,
+    connectToMongo,
+} = require('./consumer/services/mongoDBService');
+const {faker} = require('@faker-js/faker');
 const fs = require('fs');
 
 const testSizes = [30, 60, 100, 500, 1000, 2000];
 const POLLING_INTERVAL = 20; // in ms
 
+let collection;
+
 async function runTests() {
     await connectToMySql();
-    await connectToMongo();
+    collection = await connectToMongo();
 
     let results = [];
 
@@ -25,7 +37,7 @@ async function runTests() {
         let insertTime = end - start;
 
         // 2️⃣ Update-Test
-        let updatedData = testData.map(d => ({ ...d, last_name: "Updated" }));
+        let updatedData = testData.map(d => ({...d, last_name: "Updated"}));
         start = Date.now();
         await updateBulkData(updatedData);
         let updateSyncTime = await waitForSync(size);
@@ -40,7 +52,7 @@ async function runTests() {
         let deleteTime = end - start;
 
         // Saves the results in an array
-        results.push({ size, insertTime, updateTime, deleteTime });
+        results.push({size, insertTime, updateTime, deleteTime});
         console.log(`✅ Done for ${size} records!`);
     }
 
@@ -51,7 +63,7 @@ async function runTests() {
 
 // 🔹 Generating fake data for testing
 function generateTestData(size) {
-    return Array.from({ length: size }, (_, i) => ({
+    return Array.from({length: size}, (_, i) => ({
         id: i + 1,
         first_name: faker.name.firstName(),
         last_name: faker.name.lastName(),
@@ -122,8 +134,14 @@ async function checkSync() {
     return Math.min(mysqlCount, mongoCount);
 }
 
+let connection;
+
 // 🔹 Counts the number of records in MySQL
 async function countMySQL() {
+    if (!connection) {
+        connection = await connectToMySql();
+    }
+
     const [rows] = await connection.execute("SELECT COUNT(*) as count FROM DATA");
     return rows[0].count;
 }
