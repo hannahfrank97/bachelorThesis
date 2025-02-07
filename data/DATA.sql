@@ -7,6 +7,5 @@ CREATE TABLE DATA (
     address2 VARCHAR(50),
     products VARCHAR(50),
     car VARCHAR(50),
-    moviegenre VARCHAR(50),
-    slogan VARCHAR(50)
+    moviegenre VARCHAR(50)
 );
