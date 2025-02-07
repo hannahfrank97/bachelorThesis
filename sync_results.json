@@ -1,0 +1,38 @@
+[
+  {
+    "size": 30,
+    "insertTime": 566,
+    "updateTime": 407,
+    "deleteTime": 187
+  },
+  {
+    "size": 60,
+    "insertTime": 447,
+    "updateTime": 777,
+    "deleteTime": 1014
+  },
+  {
+    "size": 100,
+    "insertTime": 829,
+    "updateTime": 1339,
+    "deleteTime": 1830
+  },
+  {
+    "size": 500,
+    "insertTime": 2443,
+    "updateTime": 8688,
+    "deleteTime": 4723
+  },
+  {
+    "size": 1000,
+    "insertTime": 5241,
+    "updateTime": 23134,
+    "deleteTime": 9875
+  },
+  {
+    "size": 2000,
+    "insertTime": 12644,
+    "updateTime": 54682,
+    "deleteTime": 21079
+  }
+]
