@@ -45,14 +45,13 @@ async function insertDataToMySql(data) {
         address2: data.address2 || null,
         products: data.products || null,
         car: data.car || null,
-        moviegenre: data.moviegenre || null,
-        slogan: data.slogan || null
+        moviegenre: data.moviegenre || null
     };
 
     const sql = `
         INSERT INTO DATA
-        (id, first_name, last_name, email, address, address2, products, car, moviegenre, slogan)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, first_name, last_name, email, address, address2, products, car, moviegenre)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             first_name = VALUES(first_name),
             last_name = VALUES(last_name),
@@ -61,8 +60,7 @@ async function insertDataToMySql(data) {
             address2 = VALUES(address2),
             products = VALUES(products),
             car = VALUES(car),
-            moviegenre = VALUES(moviegenre),
-            slogan = VALUES(slogan)
+            moviegenre = VALUES(moviegenre)
     `;
 
     try {
@@ -75,8 +73,7 @@ async function insertDataToMySql(data) {
             sanitizedData.address2,
             sanitizedData.products,
             sanitizedData.car,
-            sanitizedData.moviegenre,
-            sanitizedData.slogan
+            sanitizedData.moviegenre
         ]);
         console.log(`[MySQLService] Data with id ${sanitizedData.id} inserted/updated successfully.`);
     } catch (err) {
@@ -92,7 +89,7 @@ async function insertDataToMySql(data) {
 async function updateDataInMysql(data) {
     const sql = `
         UPDATE DATA
-        SET first_name = ?, last_name = ?, email = ?, address = ?, address2 = ?, products = ?, car = ?, moviegenre = ?, slogan = ?
+        SET first_name = ?, last_name = ?, email = ?, address = ?, address2 = ?, products = ?, car = ?, moviegenre = ?
         WHERE id = ?
     `;
     const values = [
@@ -104,7 +101,6 @@ async function updateDataInMysql(data) {
         data.products,
         data.car,
         data.moviegenre,
-        data.slogan,
         data.id
     ];
 
@@ -122,6 +118,11 @@ async function updateDataInMysql(data) {
  * @param {number} id - the ID of the data to delete
  */
 async function deleteDataInMysql(id) {
+    if (typeof id !== "number") {
+        console.error("❌ Fehler: deleteDataInMysql erwartet eine Zahl, erhalten:", id);
+        return;
+    }
+
     const sql = `
         DELETE FROM DATA
         WHERE id = ?
@@ -134,6 +135,7 @@ async function deleteDataInMysql(id) {
         throw err;
     }
 }
+
 
 module.exports = {
     insertDataToMySql,

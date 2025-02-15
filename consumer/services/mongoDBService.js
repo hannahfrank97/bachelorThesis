@@ -13,11 +13,22 @@ async function connectToMongo() {
 }
 
 async function insertDataToMongo(data) {
-    await collection.insertOne(data);
+    try {
+        const result = await collection.updateOne(
+            { id: data.id }, // does the id exist?
+            { $set: data },  // if so -> update
+            { upsert: true } // if no -> insert
+        );
+        console.log(`✅ [MongoDBService] Data with id ${data.id} inserted/updated successfully.`);
+    } catch (err) {
+        console.error("❌ Error in insertDataToMongo:", err);
+        throw err;
+    }
 }
 
+
 async function updateDataInMongo(data) {
-    const {id, ...fieldsToUpdate} = data;
+    const {id, _id, ...fieldsToUpdate} = data;
     await collection.updateOne(
         {id: id},
         {$set: fieldsToUpdate}
@@ -25,8 +36,11 @@ async function updateDataInMongo(data) {
 }
 
 async function deleteDataInMongo(id) {
-    await collection.deleteOne({id: id});
+    console.log(`🗑️ Deleting from MongoDB: ID ${id}`);
+    const result = await collection.deleteOne({ id: id });
+    console.log(`Delete result:`, result);
 }
+
 
 
 module.exports = {
