@@ -61,15 +61,30 @@ async function startConsumer() {
 
         await consumer.run({
             eachMessage: async ({ topic, partition, message }) => {
-                const msgValue = message.value.toString();
-                console.log(`Received message: ${msgValue} on topic ${topic}, partition ${partition}`);
+                console.log(`📩 Received Kafka message from ${topic}, partition ${partition}`);
+
+                if (!message || !message.value) {
+                    console.error("❌ Error: Received null message or missing value.");
+                    return;
+                }
+
+                let msgValue;
+                try {
+                    msgValue = message.value.toString();
+                } catch (err) {
+                    console.error("❌ Error converting message.value to string:", err);
+                    console.error("❌ Message received:", message);
+                    return;
+                }
+
+                console.log(`✅ Raw Kafka message value: ${msgValue}`);
 
                 try {
                     const data = JSON.parse(msgValue);
-                    const op = data.op || data.__op || '';
+                    console.log("✅ Parsed Kafka message:", data);
 
-                    console.log('Parsed data:', data);
-                    console.log('Operation:', op);
+                    const op = data.op || data.__op || '';
+                    console.log("✅ Operation:", op);
 
                     if (topic.includes('mysql')) {
                         await handleMySQLtoMongo(op, data);
@@ -77,16 +92,17 @@ async function startConsumer() {
                         await handleMongotoMySQL(op, data);
                     }
                 } catch (err) {
-                    console.error('Error processing Kafka message:', err);
-                    console.error('Message content:', msgValue);
+                    console.error("❌ JSON Parsing Error:", err);
+                    console.error("❌ Message content:", msgValue);
                 }
             },
         });
+
     } catch (error) {
-        console.error('Error during startup:', error);
-        throw error;
+        console.error('Failed to start consumer:', error);
     }
-}
+
+    }
 
 // MySQL -> MongoDB
 async function handleMySQLtoMongo(op, data) {
@@ -104,8 +120,7 @@ async function handleMySQLtoMongo(op, data) {
             address2: data.address2,
             products: data.products,
             car: data.car,
-            moviegenre: data.moviegenre,
-            slogan: data.slogan
+            moviegenre: data.moviegenre
         };
 
         console.log(`[MySQL->MongoDB] Cleaned data:`, cleanData);
@@ -168,8 +183,7 @@ async function handleMongotoMySQL(op, data) {
             address2: afterDoc.address2 || null,
             products: afterDoc.products || null,
             car: afterDoc.car || null,
-            moviegenre: afterDoc.moviegenre || null,
-            slogan: afterDoc.slogan || null
+            moviegenre: afterDoc.moviegenre || null
         };
 
         console.log('[MongoDB->MySQL] ✅ Clean data:', cleanData);
@@ -185,6 +199,7 @@ async function handleMongotoMySQL(op, data) {
         } else if (op === 'u') {
             await updateDataInMysql(cleanData);
         } else if (op === 'd') {
+            console.log(`[MongoDB->MySQL] Received DELETE request for ID: ${data.id}`);
             await deleteDataInMysql(cleanData.id);
         }
     } catch (err) {
