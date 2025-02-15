@@ -1,38 +1,56 @@
 [
   {
     "size": 30,
-    "insertTime": 566,
-    "updateTime": 407,
-    "deleteTime": 187
+    "insertTime": 3656,
+    "insertTimeReverse": 1215,
+    "updateTime": 1156,
+    "updateTimeReverse": 1131,
+    "deleteTime": 3503,
+    "deleteTimeReverse": 3790
   },
   {
     "size": 60,
-    "insertTime": 447,
-    "updateTime": 777,
-    "deleteTime": 1014
+    "insertTime": 1372,
+    "insertTimeReverse": 1125,
+    "updateTime": 1185,
+    "updateTimeReverse": 1115,
+    "deleteTime": 3720,
+    "deleteTimeReverse": 3732
   },
   {
     "size": 100,
-    "insertTime": 829,
-    "updateTime": 1339,
-    "deleteTime": 1830
+    "insertTime": 1661,
+    "insertTimeReverse": 1194,
+    "updateTime": 1386,
+    "updateTimeReverse": 1384,
+    "deleteTime": 4018,
+    "deleteTimeReverse": 3771
   },
   {
     "size": 500,
-    "insertTime": 2443,
-    "updateTime": 8688,
-    "deleteTime": 4723
+    "insertTime": 3921,
+    "insertTimeReverse": 1802,
+    "updateTime": 1703,
+    "updateTimeReverse": 2568,
+    "deleteTime": 4217,
+    "deleteTimeReverse": 5826
   },
   {
     "size": 1000,
-    "insertTime": 5241,
-    "updateTime": 23134,
-    "deleteTime": 9875
+    "insertTime": 5871,
+    "insertTimeReverse": 2824,
+    "updateTime": 4434,
+    "updateTimeReverse": 3058,
+    "deleteTime": 4692,
+    "deleteTimeReverse": 8194
   },
   {
     "size": 2000,
-    "insertTime": 12644,
-    "updateTime": 54682,
-    "deleteTime": 21079
+    "insertTime": 7981,
+    "insertTimeReverse": 5990,
+    "updateTime": 6107,
+    "updateTimeReverse": 5938,
+    "deleteTime": 6489,
+    "deleteTimeReverse": 11638
   }
 ]
