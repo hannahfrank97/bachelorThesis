@@ -30,22 +30,31 @@ async function runTests() {
         let testData = generateTestData(size);
 
         // 🔹 1️⃣ Insert-Test
-        let insertTime = await measureSyncTime(testData, insertDataToMySql, insertDataToMongo, "insert");
+        let insertTimes = await measureSyncTime(testData, insertDataToMySql, insertDataToMongo, "insert");
 
         // 🔹 2️⃣ Update-Test
         let updatedData = testData.map(d => ({ ...d, last_name: "Updated" }));
-        let updateTime = await measureSyncTime(updatedData, updateDataInMysql, updateDataInMongo, "update");
+        let updateTimes = await measureSyncTime(updatedData, updateDataInMysql, updateDataInMongo, "update");
 
         // 🔹 3️⃣ Delete-Test
-        let deleteTime = await measureSyncTime(testData, deleteDataInMysql, deleteDataInMongo, "delete");
+        let deleteTimes = await measureSyncTime(testData, deleteDataInMysql, deleteDataInMongo, "delete");
 
-        results.push({ size, insertTime, updateTime, deleteTime });
+        results.push({
+            size,
+            insertTime: insertTimes.mysqlToMongo,
+            insertTimeReverse: insertTimes.mongoToMysql,
+            updateTime: updateTimes.mysqlToMongo,
+            updateTimeReverse: updateTimes.mongoToMysql,
+            deleteTime: deleteTimes.mysqlToMongo,
+            deleteTimeReverse: deleteTimes.mongoToMysql
+        });
+
         console.log(`✅ Done for ${size} records!`);
     }
 
     // Save results to a json file
-    fs.writeFileSync('sync_results.json', JSON.stringify(results, null, 2));
-    console.log("📄 Results saved to sync_results.json");
+    fs.writeFileSync('sync_results_v3.json', JSON.stringify(results, null, 2));
+    console.log("📄 Results saved to sync_results_v3.json");
 }
 
 // 🔹 Generates fake test data
@@ -67,37 +76,87 @@ function generateTestData(size) {
 async function measureSyncTime(data, mysqlFunc, mongoFunc, operation) {
     console.log(`⏳ Measuring ${operation} latency for ${data.length} records...`);
 
-    let start = Date.now(); // Timestamp Start
-    for (let d of data) {
-        await mysqlFunc(d);
-        await mongoFunc(d);
+    let startMysqlToMongo = Date.now();
+
+    if (operation === "delete") {
+        for (let d of data) {
+            console.log(`🗑️ Deleting in MySQL: ID=${d.id}, Type=${typeof d.id}`);
+            await mysqlFunc(d.id); // Deleting first in MySQL
+        }
+    } else {
+        for (let d of data) {
+            await mysqlFunc(d); // Inserting/Updating first in MySQL
+        }
     }
 
-    let syncTime = await waitForSync(data.length);
-    let end = Date.now();
+    console.log("⏳ Waiting for Debezium sync (MySQL → MongoDB)...");
+    await new Promise(resolve => setTimeout(resolve, 2000)); // waiting for 2 seconds for Debezium Sync
 
-    let duration = end - start;
-    console.log(`⏳ ${operation} sync time: ${duration} ms`);
-    return duration;
+    let mysqlToMongoSyncTime = await waitForSync(data.length);
+    let endMysqlToMongo = Date.now();
+
+    let startMongoToMysql = Date.now();
+
+    if (operation === "delete") {
+        for (let d of data) {
+            console.log(`🗑️ Deleting in MongoDB: ID=${d.id}, Type=${typeof d.id}`);
+            await mongoFunc(d.id); // Then -> deleting in MongoDB
+        }
+    } else {
+        for (let d of data) {
+            await mongoFunc(d); // And then inserting/updating in MongoDB
+        }
+    }
+
+    console.log("⏳ Waiting for Debezium sync (MongoDB → MySQL)...");
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Waiting for 2 seconds for Debezium Sync
+
+    let mongoToMysqlSyncTime = await waitForSync(data.length);
+    let endMongoToMysql = Date.now();
+
+    let totalMysqlToMongo = endMysqlToMongo - startMysqlToMongo;
+    let totalMongoToMysql = endMongoToMysql - startMongoToMysql;
+
+    console.log(`✅ ${operation} sync time: MySQL → MongoDB = ${totalMysqlToMongo}ms, MongoDB → MySQL = ${totalMongoToMysql}ms`);
+
+    return {
+        mysqlToMongo: totalMysqlToMongo,
+        mongoToMysql: totalMongoToMysql
+    };
 }
+
+
 
 // 🔹 Checks if Mongodb and MySQL are in sync
 async function waitForSync(expectedCount) {
     let start = Date.now();
-    let count = 0;
+    let count = -1; // Ensure first loop runs
+    let iteration = 0;
 
-    while (count < expectedCount) {
-        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
+    while (count !== expectedCount && iteration < 100) { // Limit retries to prevent infinite loops
         count = await checkSync();
+        console.log(`🔄 Waiting for Sync... Count: ${count}, Expected: ${expectedCount}`);
+
+        if (expectedCount === 0 && count === 0) {
+            console.log("✅ Deletion sync confirmed.");
+            return Date.now() - start;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
+        iteration++;
     }
 
+    console.warn("⚠️ Sync needed too much time!");
     return Date.now() - start;
 }
+
 
 // 🔹 Checks the amount of synchronised data
 async function checkSync() {
     const mysqlCount = await countMySQL();
     const mongoCount = await countMongo();
+    console.log(`🔍 Sync Check: MySQL = ${mysqlCount}, MongoDB = ${mongoCount}`);
+
     return Math.min(mysqlCount, mongoCount);
 }
 
