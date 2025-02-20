@@ -2,23 +2,30 @@ const { Kafka } = require('kafkajs');
 const {
     updateDataInMysql,
     insertDataToMySql,
-    deleteDataInMysql,
     connectToMySql,
+    insertPassengerMySql,
+    insertFlightMySql,
+    insertTicketMySql,
+    countMySQL
 } = require('./services/mysqlService');
+
 const {
     insertDataToMongo,
     updateDataInMongo,
-    deleteDataInMongo,
     connectToMongo,
+    insertPassengerMongo,
+    insertFlightMongo,
+    insertTicketMongo,
+    countMongo
 } = require('./services/mongoDBService');
 
-// Configuring Kafka connection
+// Kafka Configuration
 const kafka = new Kafka({
     clientId: 'sync-service',
     brokers: ['kafka:9092'],
 });
 
-// Adding Consumer
+// Kafka Consumer
 const consumer = kafka.consumer({ groupId: 'sync-group' });
 
 async function initialize() {
@@ -38,30 +45,31 @@ async function initialize() {
 
 async function startConsumer() {
     try {
-        // Initialize connections first
         await initialize();
 
         console.log('Starting Kafka Consumer...');
         await consumer.connect();
         console.log('Kafka Consumer connected.');
 
-        // Subscribing to topics with explicit topic assignments
         await consumer.subscribe({
             topics: [
                 'mysql.mysql_database.DATA',
-                'mongodb.mongo_database.DATA'
+                'mongodb.mongo_database.DATA',
+                'mysql.mysql_database.Passenger',
+                'mysql.mysql_database.Flight',
+                'mysql.mysql_database.Ticket',
+                'mongodb.mongo_database.Passenger',
+                'mongodb.mongo_database.Flight',
+                'mongodb.mongo_database.Ticket'
             ],
             fromBeginning: true
         });
 
-        console.log('Subscribed to topics:', [
-            'mysql.mysql_database.DATA',
-            'mongodb.mongo_database.DATA'
-        ]);
+        console.log('Subscribed to topics.');
 
         await consumer.run({
-            eachMessage: async ({ topic, partition, message }) => {
-                console.log(`📩 Received Kafka message from ${topic}, partition ${partition}`);
+            eachMessage: async ({ topic, message }) => {
+                console.log(`📩 Received Kafka message from ${topic}`);
 
                 if (!message || !message.value) {
                     console.error("❌ Error: Received null message or missing value.");
@@ -73,27 +81,20 @@ async function startConsumer() {
                     msgValue = message.value.toString();
                 } catch (err) {
                     console.error("❌ Error converting message.value to string:", err);
-                    console.error("❌ Message received:", message);
                     return;
                 }
 
-                console.log(`✅ Raw Kafka message value: ${msgValue}`);
-
                 try {
                     const data = JSON.parse(msgValue);
-                    console.log("✅ Parsed Kafka message:", data);
-
                     const op = data.op || data.__op || '';
-                    console.log("✅ Operation:", op);
 
                     if (topic.includes('mysql')) {
-                        await handleMySQLtoMongo(op, data);
+                        await handleMySQLtoMongo(op, data, topic);
                     } else if (topic.includes('mongo_database')) {
-                        await handleMongotoMySQL(op, data);
+                        await handleMongotoMySQL(op, data, topic);
                     }
                 } catch (err) {
                     console.error("❌ JSON Parsing Error:", err);
-                    console.error("❌ Message content:", msgValue);
                 }
             },
         });
@@ -101,117 +102,127 @@ async function startConsumer() {
     } catch (error) {
         console.error('Failed to start consumer:', error);
     }
+}
 
-    }
-
-// MySQL -> MongoDB
-async function handleMySQLtoMongo(op, data) {
-    console.log(`[MySQL->MongoDB] Raw operation: ${op}`);
-    console.log(`[MySQL->MongoDB] Raw data:`, data);
+// MySQL → MongoDB Sync
+async function handleMySQLtoMongo(op, data, topic) {
+    console.log(`[MySQL->MongoDB] Operation: ${op}`);
 
     try {
-        // Clean up the MySQL data before sending to MongoDB
-        const cleanData = {
-            id: data.id,
-            first_name: data.first_name,
-            last_name: data.last_name,
-            email: data.email,
-            address: data.address,
-            address2: data.address2,
-            products: data.products,
-            car: data.car,
-            moviegenre: data.moviegenre
-        };
+        let cleanData;
 
-        console.log(`[MySQL->MongoDB] Cleaned data:`, cleanData);
+        if (topic.includes('DATA')) {
+            cleanData = {
+                id: data.id,
+                first_name: data.first_name,
+                last_name: data.last_name,
+                email: data.email,
+                address: data.address,
+                address2: data.address2,
+                products: data.products,
+                car: data.car,
+                moviegenre: data.moviegenre
+            };
+        } else if (topic.includes('Passenger')) {
+            cleanData = { id: data.id, name: data.name, email: data.email };
+        } else if (topic.includes('Flight')) {
+            cleanData = { id: data.id, flight_number: data.flight_number, destination: data.destination };
+        } else if (topic.includes('Ticket')) {
+            cleanData = { id: data.id, passenger_id: data.passenger_id, flight_id: data.flight_id, seat: data.seat };
+        }
 
         if (op === 'c') {
-            await insertDataToMongo(cleanData);
-            console.log(`[MySQL->MongoDB] Successfully inserted data with id ${cleanData.id}`);
+            if (topic.includes('DATA')) await insertDataToMongo(cleanData);
+            else if (topic.includes('Passenger')) await insertPassengerMongo(cleanData);
+            else if (topic.includes('Flight')) await insertFlightMongo(cleanData);
+            else if (topic.includes('Ticket')) await insertTicketMongo(cleanData);
+
+            console.log(`[MySQL->MongoDB] Inserted ${topic} data with ID ${cleanData.id}`);
         } else if (op === 'u') {
-            await updateDataInMongo(cleanData);
-            console.log(`[MySQL->MongoDB] Successfully updated data with id ${cleanData.id}`);
-        } else if (op === 'd') {
-            await deleteDataInMongo(cleanData.id);
-            console.log(`[MySQL->MongoDB] Successfully deleted data with id ${cleanData.id}`);
+            if (topic.includes('DATA')) await updateDataInMongo(cleanData);
+
+            console.log(`[MySQL->MongoDB] Updated ${topic} data with ID ${cleanData.id}`);
         }
     } catch (err) {
         console.error('[MySQL->MongoDB] Error:', err);
     }
 }
 
-// MongoDB -> MySQL
-async function handleMongotoMySQL(op, data) {
-    console.log(`[MongoDB->MySQL] Operation: ${op}, Data:`, data);
+// MongoDB → MySQL Sync
+async function handleMongotoMySQL(op, data, topic) {
+    console.log(`[MongoDB->MySQL] Operation: ${op}`);
 
     try {
         let afterDoc = {};
         if (data.after) {
-            try {
-                afterDoc = typeof data.after === 'string' ? JSON.parse(data.after) : data.after;
-            } catch (parseError) {
-                console.error('[MongoDB->MySQL] Error parsing data.after:', parseError);
-                throw parseError;
-            }
-        }
-        console.log('[MongoDB->MySQL] Parsed afterDoc:', afterDoc);
-
-        let resolvedId = null;
-
-        if (afterDoc.hasOwnProperty('id')) {
-            resolvedId = afterDoc.id;
-            console.log(`[MongoDB->MySQL] ✅ Found id directly in afterDoc:`, resolvedId, `(Type: ${typeof resolvedId})`);
+            afterDoc = typeof data.after === 'string' ? JSON.parse(data.after) : data.after;
         }
 
-        if (!resolvedId && afterDoc._id && afterDoc._id.$oid) {
-            resolvedId = afterDoc._id.$oid;
-            console.warn('[MongoDB->MySQL] ⚠️ Using _id.$oid as fallback ID:', resolvedId);
+        let resolvedId = afterDoc.id || (afterDoc._id ? afterDoc._id.$oid : null);
+
+        if (!resolvedId) {
+            console.warn("[MongoDB->MySQL] ⚠️ No valid ID found");
+            return;
         }
 
-        if (resolvedId !== null) {
-            console.log(`[MongoDB->MySQL] ✅ Final resolvedId:`, resolvedId, `(Type: ${typeof resolvedId})`);
-        } else {
-            console.warn(`[MongoDB->MySQL] ⚠️ No valid ID could be resolved`);
-        }
+        let cleanData;
 
-        const cleanData = {
-            id: resolvedId,
-            first_name: afterDoc.first_name || null,
-            last_name: afterDoc.last_name || null,
-            email: afterDoc.email || null,
-            address: afterDoc.address || null,
-            address2: afterDoc.address2 || null,
-            products: afterDoc.products || null,
-            car: afterDoc.car || null,
-            moviegenre: afterDoc.moviegenre || null
-        };
-
-        console.log('[MongoDB->MySQL] ✅ Clean data:', cleanData);
-        console.log('[MongoDB->MySQL] ✅ cleanData.id:', cleanData.id, `(Type: ${typeof cleanData.id})`);
-
-        if (!cleanData.id || (typeof cleanData.id === 'number' && isNaN(cleanData.id))) {
-            console.error(`[MongoDB->MySQL] ❌ Invalid ID detected:`, cleanData.id);
-            throw new Error('Invalid or missing ID in data: ' + JSON.stringify(cleanData));
+        if (topic.includes('DATA')) {
+            cleanData = {
+                id: resolvedId,
+                first_name: afterDoc.first_name || null,
+                last_name: afterDoc.last_name || null,
+                email: afterDoc.email || null,
+                address: afterDoc.address || null,
+                address2: afterDoc.address2 || null,
+                products: afterDoc.products || null,
+                car: afterDoc.car || null,
+                moviegenre: afterDoc.moviegenre || null
+            };
+        } else if (topic.includes('Passenger')) {
+            cleanData = { id: resolvedId, name: afterDoc.name, email: afterDoc.email };
+        } else if (topic.includes('Flight')) {
+            cleanData = { id: resolvedId, flight_number: afterDoc.flight_number, destination: afterDoc.destination };
+        } else if (topic.includes('Ticket')) {
+            cleanData = { id: resolvedId, passenger_id: afterDoc.passenger_id, flight_id: afterDoc.flight_id, seat: afterDoc.seat };
         }
 
         if (op === 'c') {
-            await insertDataToMySql(cleanData);
+            if (topic.includes('DATA')) await insertDataToMySql(cleanData);
+            else if (topic.includes('Passenger')) await insertPassengerMySql(cleanData);
+            else if (topic.includes('Flight')) await insertFlightMySql(cleanData);
+            else if (topic.includes('Ticket')) await insertTicketMySql(cleanData);
+
+            console.log(`[MongoDB->MySQL] Inserted ${topic} data with ID ${cleanData.id}`);
         } else if (op === 'u') {
-            await updateDataInMysql(cleanData);
-        } else if (op === 'd') {
-            console.log(`[MongoDB->MySQL] Received DELETE request for ID: ${data.id}`);
-            await deleteDataInMysql(cleanData.id);
+            if (topic.includes('DATA')) await updateDataInMysql(cleanData);
+
+            console.log(`[MongoDB->MySQL] Updated ${topic} data with ID ${cleanData.id}`);
         }
     } catch (err) {
         console.error('[MongoDB->MySQL] ❌ Error:', err);
     }
 }
 
+// Function to check data consistency
+async function checkSync() {
+    const mysqlCount = await countMySQL("Ticket");
+    const mongoCount = await countMongo("Ticket");
+    console.log(`🔍 Foreign Key Sync Check: MySQL = ${mysqlCount}, MongoDB = ${mongoCount}`);
+
+    if (mysqlCount !== mongoCount) {
+        console.warn("⚠️ Foreign Key Sync Mismatch detected!");
+    } else {
+        console.log("✅ Foreign Key Data is consistent!");
+    }
+}
+
 module.exports = {
     startConsumer,
+    checkSync
 };
 
-// Starting the consumer only when this file is run directly
+// Start the consumer when this file is run directly
 if (require.main === module) {
     startConsumer().catch((err) => console.error('Failed to start consumer:', err));
 }
