@@ -6,19 +6,23 @@ let connection;
  * Initializing MongoDB to MySQL.
  */
 async function connectToMySql() {
-    try {
-        connection = await mysql.createConnection({
-            host: 'mysql',
-            user: 'root',
-            password: 'test',
-            database: 'mysql_database'
-        });
-        console.log("Connected to MySQL");
-        return connection;
-    } catch (err) {
-        console.error("Error connecting to MySQL:", err);
-        throw err;
+    if (!connection) {
+        try {
+            connection = await mysql.createConnection({
+                host: 'mysql',
+                user: 'root',
+                password: 'test',
+                database: 'mysql_database'
+            });
+            console.log("Connected to MySQL");
+            return connection;
+        } catch (err) {
+            console.error("Error connecting to MySQL:", err);
+            throw err;
+        }
+
     }
+    return connection;
 }
 
 /**
@@ -136,11 +140,49 @@ async function deleteDataInMysql(id) {
     }
 }
 
+async function insertPassengerMySql(passenger) {
+    if (!connection) {
+        await connectToMySql();
+    }
+
+    const sql = `INSERT INTO Passenger (id, name, email) VALUES (?, ?, ?)`;
+    await connection.execute(sql, [passenger.id, passenger.name, passenger.email]);
+    console.log(`✅ Inserted Passenger ${passenger.id} into MySQL`);
+}
+
+
+async function insertFlightMySql(flight) {
+    const sql = `INSERT INTO Flight (id, flight_number, destination) VALUES (?, ?, ?)`;
+    await connection.execute(sql, [flight.id, flight.flight_number, flight.destination]);
+    console.log(`✅ Inserted Flight ${flight.id}`);
+}
+
+async function insertTicketMySql(ticket) {
+    try {
+        const sql = `INSERT INTO Ticket (id, passenger_id, flight_id, seat) VALUES (?, ?, ?, ?)`;
+        await connection.execute(sql, [ticket.id, ticket.passenger_id, ticket.flight_id, ticket.seat]);
+        console.log(`✅ Inserted Ticket ${ticket.id}`);
+    } catch (err) {
+        console.error(`❌ Ticket insert failed for ${ticket.id}: ${err.message}`);
+    }
+}
+
+async function countMySQL(table) {
+    const [rows] = await connection.execute(`SELECT COUNT(*) as count FROM ${table}`);
+    return rows[0].count;
+}
+
+
+
 
 module.exports = {
     insertDataToMySql,
     updateDataInMysql,
     deleteDataInMysql,
     connectToMySql,
-    connection
+    connection,
+    insertTicketMySql,
+    insertFlightMySql,
+    insertPassengerMySql,
+    countMySQL
 };
