@@ -1,6 +1,12 @@
 const express = require('express');
-const {insertDataToMongo, updateDataInMongo, deleteDataInMongo} = require('./services/mongoDBService');
-const {insertDataToMySql, updateDataInMysql, deleteDataInMysql} = require('./services/mysqlService');
+const {
+    insertPassengerMongo, insertFlightMongo, insertTicketMongo,
+    deleteDataInMongo, updateDataInMongo, insertDataToMongo
+} = require('./services/mongoDBService');
+const {
+    insertPassengerMySql, insertFlightMySql, insertTicketMySql,
+    deleteDataInMysql, updateDataInMysql, insertDataToMySql
+} = require('./services/mysqlService');
 
 const app = express();
 app.use(express.json());
@@ -43,6 +49,45 @@ app.delete('/data/:id', async (req, res) => {
     } catch (err) {
         console.error('Error deleting data:', err);
         res.status(500).json({message: 'Error deleting data'});
+    }
+});
+
+// 🔹 Adding new Passenger
+app.post('/passenger', async (req, res) => {
+    try {
+        const passenger = req.body;
+        await insertPassengerMySql(passenger);
+        await insertPassengerMongo(passenger);
+        res.status(201).json({ message: 'Passenger added successfully' });
+    } catch (err) {
+        console.error('Error inserting passenger:', err);
+        res.status(500).json({ message: 'Error inserting passenger' });
+    }
+});
+
+// 🔹 Adding new Flight
+app.post('/flight', async (req, res) => {
+    try {
+        const flight = req.body;
+        await insertFlightMySql(flight);
+        await insertFlightMongo(flight);
+        res.status(201).json({ message: 'Flight added successfully' });
+    } catch (err) {
+        console.error('Error inserting flight:', err);
+        res.status(500).json({ message: 'Error inserting flight' });
+    }
+});
+
+// 🔹 Adding new Ticket (with foreign key constraints)
+app.post('/ticket', async (req, res) => {
+    try {
+        const ticket = req.body;
+        await insertTicketMySql(ticket);
+        await insertTicketMongo(ticket);
+        res.status(201).json({ message: 'Ticket added successfully' });
+    } catch (err) {
+        console.error('Error inserting ticket:', err);
+        res.status(500).json({ message: 'Error inserting ticket' });
     }
 });
 
