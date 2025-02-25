@@ -40,7 +40,7 @@ async function testForeignKeyHandling() {
 }
 
 async function checkForeignKeySync() {
-    await connectToMongo(); // <--- Sicherstellen, dass MongoDB verbunden ist
+    await connectToMongo();
 
     const mysqlCount = await countMySQL("Ticket");
     const mongoCount = await countMongo("Ticket");
