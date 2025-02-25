@@ -24,6 +24,7 @@ async function runTests() {
     collection = await connectToMongo();
 
     let results = [];
+    let latencyResults = [];
 
     for (let size of testSizes) {
         console.log(`🔹 Testing with ${size} records...`);
@@ -51,10 +52,33 @@ async function runTests() {
 
         console.log(`✅ Done for ${size} records!`);
     }
+        latencyResults.push({
+            size,
+            insertLatency: {
+                mysqlToMongo: insertTimes.mysqlToMongo,
+                mongoToMysql: insertTimes.mongoToMysql
+            },
+            updateLatency: {
+                mysqlToMongo: updateTimes.mysqlToMongo,
+                mongoToMysql: updateTimes.mongoToMysql
+            },
+            deleteLatency: {
+                mysqlToMongo: deleteTimes.mysqlToMongo,
+                mongoToMysql: deleteTimes.mongoToMysql
+            }
+        });
 
     // Save results to a json file
+         console.log(`✅ Done for ${size} records!`);
+        }
+
+    // Save  full sync results
     fs.writeFileSync('sync_results_v3.json', JSON.stringify(results, null, 2));
     console.log("📄 Results saved to sync_results_v3.json");
+
+    // Save latency results
+    fs.writeFileSync('latency_results.json', JSON.stringify(latencyResults, null, 2));
+    console.log("📄 Results saved to latency_results.json");
 }
 
 // 🔹 Generates fake test data
