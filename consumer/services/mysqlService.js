@@ -167,12 +167,14 @@ async function insertTicketMySql(ticket) {
     }
 }
 
-async function countMySQL(table) {
-    const [rows] = await connection.execute(`SELECT COUNT(*) as count FROM ${table}`);
+// 🔹 Counts the amount of entries in MySQL
+async function countMySQL() {
+    if (!connection) {
+        connection = await connectToMySql();
+    }
+    const [rows] = await connection.execute("SELECT COUNT(*) as count FROM DATA");
     return rows[0].count;
 }
-
-
 
 
 module.exports = {
