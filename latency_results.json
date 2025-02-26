@@ -1,0 +1,38 @@
+[
+  {
+    "size": 30,
+    "insertLatency": 1039,
+    "updateLatency": 286,
+    "deleteLatency": 271
+  },
+  {
+    "size": 60,
+    "insertLatency": 840,
+    "updateLatency": 378,
+    "deleteLatency": 254
+  },
+  {
+    "size": 100,
+    "insertLatency": 1690,
+    "updateLatency": 283,
+    "deleteLatency": 473
+  },
+  {
+    "size": 500,
+    "insertLatency": 4481,
+    "updateLatency": 1436,
+    "deleteLatency": 1304
+  },
+  {
+    "size": 1000,
+    "insertLatency": 6774,
+    "updateLatency": 2673,
+    "deleteLatency": 3276
+  },
+  {
+    "size": 2000,
+    "insertLatency": 12817,
+    "updateLatency": 5529,
+    "deleteLatency": 6072
+  }
+]
