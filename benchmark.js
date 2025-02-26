@@ -45,23 +45,27 @@ async function runTests() {
 
         results.push({
             size,
-            insertTime: insertTimes.mysqlToMongo,
-            insertTimeReverse: insertTimes.mongoToMysql,
-            updateTime: updateTimes.mysqlToMongo,
-            updateTimeReverse: updateTimes.mongoToMysql,
-            deleteTime: deleteTimes.mysqlToMongo,
-            deleteTimeReverse: deleteTimes.mongoToMysql
+            insertTime: insertTimes.mysqlToMongoTotalTime,
+            insertTimeReverse: insertTimes.mongoToMysqlTotalTime,
+            updateTime: updateTimes.mysqlToMongoTotalTime,
+            updateTimeReverse: updateTimes.mongoToMysqlTotalTime,
+            deleteTime: deleteTimes.mysqlToMongoTotalTime,
+            deleteTimeReverse: deleteTimes.mongoToMysqlTotalTime
         });
+
 
         console.log(`✅ Done for ${size} records!`);
 
-
         latencyResults.push({
             size,
-            insertLatency: insertTimes.latency,
-            updateLatency: updateTimes.latency,
-            deleteLatency: deleteTimes.latency
+            insertLatency: insertTimes.mysqlToMongoLatency,
+            insertLatencyReverse: insertTimes.mongoToMysqlLatency,
+            updateLatency: updateTimes.mysqlToMongoLatency,
+            updateLatencyReverse: updateTimes.mongoToMysqlLatency,
+            deleteLatency: deleteTimes.mysqlToMongoLatency,
+            deleteLatencyReverse: deleteTimes.mongoToMysqlLatency
         });
+
 
     // Save results to a json file
          console.log(`✅ Done for ${size} records!`);
@@ -69,12 +73,12 @@ async function runTests() {
     }
 
     // Save  full sync results
-    fs.writeFileSync('sync_results_v3.json', JSON.stringify(results, null, 2));
-    console.log("📄 Results saved to sync_results_v3.json");
+    fs.writeFileSync('sync_results_v4.json', JSON.stringify(results, null, 2));
+    console.log("📄 Results saved to sync_results_v4.json");
 
     // Save latency results
-    fs.writeFileSync('latency_results.json', JSON.stringify(latencyResults, null, 2));
-    console.log("📄 Results saved to latency_results.json");
+    fs.writeFileSync('latency_results_v2.json', JSON.stringify(latencyResults, null, 2));
+    console.log("📄 Results saved to latency_results_v2.json");
 }
 
 // 🔹 Generates fake test data
@@ -92,46 +96,60 @@ function generateTestData(size) {
     }));
 }
 
-// 🔹 Calculates the synchronization time for MySQL and MongoDB
+// Measures latency and total sync time in both directions (MySQL → MongoDB & MongoDB → MySQL)
 async function measureSyncTime(data, mysqlFunc, mongoFunc, operation) {
     console.log(`⏳ Measuring ${operation} latency and total time for ${data.length} records...`);
 
-    let expectedCount = data.length;
+    let expectedCount = operation === "delete" ? 0 : data.length;
 
-    // 🔹 1️⃣ Latenzzeit messen (bis 1. Eintrag in MongoDB)
-    let startLatency = Date.now();
+    // 🔹 1️⃣ MySQL → MongoDB
+    let startLatencyMySQLtoMongo = Date.now();
 
-    if (operation === "delete") {
-        for (let d of data) {
-            console.log(`🗑️ Deleting in MySQL: ID=${d.id}`);
-            await mysqlFunc(d.id); // Hier übergeben wir nur die ID!
-        }
-    } else {
-        for (let d of data) {
-            await mysqlFunc(d); // Für Insert/Update bleibt es gleich
-        }
+    for (let d of data) {
+        await mysqlFunc(operation === "delete" ? d.id : d);
     }
 
-    while (await countMongo("DATA") < expectedCount) {
+    while (await countMongo("DATA") !== expectedCount) {
+        console.log(`🔄 Waiting for Sync... MongoDB=${await countMongo("DATA")}, Expected=${expectedCount}`);
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
     }
 
-    let endLatency = Date.now();
-    let mysqlToMongoLatency = endLatency - startLatency;
+    let endLatencyMySQLtoMongo = Date.now();
+    let mysqlToMongoLatency = endLatencyMySQLtoMongo - startLatencyMySQLtoMongo;
 
-    // 🔹 2️⃣ Gesamtsynchronisationszeit messen (bis vollständiger Sync)
-    let startTotalSync = Date.now();
-
+    let startTotalSyncMySQLtoMongo = Date.now();
     await waitForSync(expectedCount);
+    let endTotalSyncMySQLtoMongo = Date.now();
+    let mysqlToMongoTotalTime = endTotalSyncMySQLtoMongo - startTotalSyncMySQLtoMongo;
 
-    let endTotalSync = Date.now();
-    let mysqlToMongoTotalTime = endTotalSync - startTotalSync;
+    console.log(`✅ ${operation} MySQL → MongoDB: Latency = ${mysqlToMongoLatency}ms, Total Sync Time = ${mysqlToMongoTotalTime}ms`);
 
-    console.log(`✅ ${operation} times: Latency = ${mysqlToMongoLatency}ms, Total Sync Time = ${mysqlToMongoTotalTime}ms`);
+    // 🔹 2️⃣ MongoDB → MySQL
+    let startLatencyMongoToMySQL = Date.now();
+
+    for (let d of data) {
+        await mongoFunc(operation === "delete" ? d.id : d);
+    }
+
+    while (await countMySQL("DATA") !== expectedCount) {
+        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
+    }
+
+    let endLatencyMongoToMySQL = Date.now();
+    let mongoToMysqlLatency = endLatencyMongoToMySQL - startLatencyMongoToMySQL;
+
+    let startTotalSyncMongoToMySQL = Date.now();
+    await waitForSync(expectedCount);
+    let endTotalSyncMongoToMySQL = Date.now();
+    let mongoToMysqlTotalTime = endTotalSyncMongoToMySQL - startTotalSyncMongoToMySQL;
+
+    console.log(`✅ ${operation} MongoDB → MySQL: Latency = ${mongoToMysqlLatency}ms, Total Sync Time = ${mongoToMysqlTotalTime}ms`);
 
     return {
-        latency: mysqlToMongoLatency,  // Nur bis 1. Datensatz sichtbar ist
-        totalSyncTime: mysqlToMongoTotalTime // Bis vollständige Synchronisation abgeschlossen ist
+        mysqlToMongoLatency,
+        mysqlToMongoTotalTime,
+        mongoToMysqlLatency,
+        mongoToMysqlTotalTime
     };
 }
 
@@ -164,10 +182,12 @@ async function waitForSync(expectedCount) {
 async function checkSync() {
     const mysqlCount = await countMySQL("DATA");
     const mongoCount = await countMongo("DATA");
-    console.log(`🔍 Sync Check: MySQL = ${mysqlCount}, MongoDB = ${mongoCount}`);
+
+    console.log(`🔍 Sync Check: MySQL=${mysqlCount}, MongoDB=${mongoCount}`);
 
     return Math.min(mysqlCount, mongoCount);
 }
+
 
 // Run the tests
 runTests().catch(console.error);
