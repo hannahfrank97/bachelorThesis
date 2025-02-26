@@ -1,10 +1,7 @@
 const { MongoClient } = require('mongodb');
 
 let client;
-let collection;
-let collectionPassenger;
-let collectionFlight;
-let collectionTicket;
+let collections;
 
 async function connectToMongo() {
     if (!client) {
@@ -15,22 +12,31 @@ async function connectToMongo() {
     }
 
     const db = client.db('mongo_database');
-    collection = db.collection('DATA');
-    collectionPassenger = db.collection('Passenger');
-    collectionFlight = db.collection('Flight');
-    collectionTicket = db.collection('Ticket');
 
-    return { collection, collectionPassenger, collectionFlight, collectionTicket };
+    collections = {
+        dataCollection: db.collection('DATA'),
+        passengerCollection: db.collection('Passenger'),
+        flightCollection: db.collection('Flight'),
+        ticketCollection: db.collection('Ticket')
+    };
+
+    return collections;
 }
-
 
 async function insertDataToMongo(data) {
     try {
-        const result = await collection.updateOne(
-            { id: data.id }, // does the id exist?
-            { $set: data },  // if so -> update
-            { upsert: true } // if no -> insert
+        // Sicherstellen, dass collections existiert
+        if (!collections || !collections.dataCollection) {
+            console.error("❌ Error: MongoDB 'dataCollection' is not initialized!");
+            return;
+        }
+
+        const result = await collections.dataCollection.updateOne(
+            { id: data.id },
+            { $set: data },
+            { upsert: true }
         );
+
         console.log(`✅ [MongoDBService] Data with id ${data.id} inserted/updated successfully.`);
     } catch (err) {
         console.error("❌ Error in insertDataToMongo:", err);
@@ -38,53 +44,87 @@ async function insertDataToMongo(data) {
     }
 }
 
-
 async function updateDataInMongo(data) {
-    const {id, _id, ...fieldsToUpdate} = data;
-    await collection.updateOne(
-        {id: id},
-        {$set: fieldsToUpdate}
+    if (!collections || !collections.dataCollection) {
+        console.error("❌ Error: MongoDB 'dataCollection' is not initialized!");
+        return;
+    }
+
+    const { id, _id, ...fieldsToUpdate } = data;
+    await collections.dataCollection.updateOne(
+        { id: id },
+        { $set: fieldsToUpdate }
     );
 }
 
 async function deleteDataInMongo(id) {
+    if (!collections || !collections.dataCollection) {
+        console.error("❌ Error: MongoDB 'dataCollection' is not initialized!");
+        return;
+    }
+
     console.log(`🗑️ Deleting from MongoDB: ID ${id}`);
-    const result = await collection.deleteOne({ id: id });
+    const result = await collections.dataCollection.deleteOne({ id: id });
     console.log(`Delete result:`, result);
 }
 
-
 async function insertPassengerMongo(passenger) {
-    await collectionPassenger.insertOne(passenger);
+    if (!collections || !collections.passengerCollection) {
+        console.error("❌ Error: MongoDB 'passengerCollection' is not initialized!");
+        return;
+    }
+
+    await collections.passengerCollection.insertOne(passenger);
     console.log(`✅ Inserted Passenger ${passenger.id} into MongoDB`);
 }
 
 async function insertFlightMongo(flight) {
-    await collectionFlight.insertOne(flight);
+    if (!collections || !collections.flightCollection) {
+        console.error("❌ Error: MongoDB 'flightCollection' is not initialized!");
+        return;
+    }
+
+    await collections.flightCollection.insertOne(flight);
     console.log(`✅ Inserted Flight ${flight.id} into MongoDB`);
 }
 
 async function insertTicketMongo(ticket) {
-    const passengerExists = await collectionPassenger.findOne({ id: ticket.passenger_id });
-    const flightExists = await collectionFlight.findOne({ id: ticket.flight_id });
+    if (!collections || !collections.ticketCollection) {
+        console.error("❌ Error: MongoDB 'ticketCollection' is not initialized!");
+        return;
+    }
+
+    const passengerExists = await collections.passengerCollection.findOne({ id: ticket.passenger_id });
+    const flightExists = await collections.flightCollection.findOne({ id: ticket.flight_id });
 
     if (!passengerExists || !flightExists) {
         console.error(`❌ Ticket insert failed: Missing Passenger ${ticket.passenger_id} or Flight ${ticket.flight_id}`);
         return;
     }
 
-    await collectionTicket.insertOne(ticket);
+    await collections.ticketCollection.insertOne(ticket);
     console.log(`✅ Inserted Ticket ${ticket.id} into MongoDB`);
 }
 
 async function countMongo(collectionName) {
-    let collection;
-    if (collectionName === "Passenger") collection = collectionPassenger;
-    if (collectionName === "Flight") collection = collectionFlight;
-    if (collectionName === "Ticket") collection = collectionTicket;
-    return await collection.countDocuments();
-}
+    if (!collections) {
+        console.error("❌ Error: MongoDB collections are not initialized!");
+        return 0;
+    }
 
+    let targetCollection;
+    if (collectionName === "Passenger") targetCollection = collections.passengerCollection;
+    else if (collectionName === "Flight") targetCollection = collections.flightCollection;
+    else if (collectionName === "Ticket") targetCollection = collections.ticketCollection;
+    else if (collectionName === "DATA") targetCollection = collections.dataCollection;
+
+    if (!targetCollection) {
+        console.error(`❌ Error: Unknown collection '${collectionName}'`);
+        return 0;
+    }
+
+    return await targetCollection.countDocuments();
+}
 
 module.exports = {
     insertDataToMongo,
@@ -95,4 +135,4 @@ module.exports = {
     insertFlightMongo,
     insertTicketMongo,
     countMongo
-}
+};
