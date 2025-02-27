@@ -6,7 +6,7 @@ let collections;
 async function connectToMongo() {
     if (!client) {
         const uri = 'mongodb://root:test@mongo-container:27017/?authSource=admin';
-        client = new MongoClient(uri, { useUnifiedTopology: true });
+        client = new MongoClient(uri);
         await client.connect();
         console.log("✅ Connected to MongoDB");
     }

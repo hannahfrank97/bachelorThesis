@@ -100,23 +100,29 @@ function generateTestData(size) {
 async function measureSyncTime(data, mysqlFunc, mongoFunc, operation) {
     console.log(`⏳ Measuring ${operation} latency and total time for ${data.length} records...`);
 
-    let expectedCount = operation === "delete" ? 0 : data.length;
+    let expectedCount = data.length;
 
-    // 🔹 1️⃣ MySQL → MongoDB
+    // 1️⃣ MySQL → MongoDB Messung
     let startLatencyMySQLtoMongo = Date.now();
 
-    for (let d of data) {
-        await mysqlFunc(operation === "delete" ? d.id : d);
+    if (operation === "delete") {
+        for (let d of data) {
+            await mysqlFunc(d.id); // Für Delete übergeben wir nur die ID
+        }
+    } else {
+        for (let d of data) {
+            await mysqlFunc(d);
+        }
     }
 
-    while (await countMongo("DATA") !== expectedCount) {
-        console.log(`🔄 Waiting for Sync... MongoDB=${await countMongo("DATA")}, Expected=${expectedCount}`);
+    while (await countMongo("DATA") < expectedCount) {
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
     }
 
     let endLatencyMySQLtoMongo = Date.now();
     let mysqlToMongoLatency = endLatencyMySQLtoMongo - startLatencyMySQLtoMongo;
 
+    // Warten, bis alle Datensätze synchronisiert sind
     let startTotalSyncMySQLtoMongo = Date.now();
     await waitForSync(expectedCount);
     let endTotalSyncMySQLtoMongo = Date.now();
@@ -124,20 +130,27 @@ async function measureSyncTime(data, mysqlFunc, mongoFunc, operation) {
 
     console.log(`✅ ${operation} MySQL → MongoDB: Latency = ${mysqlToMongoLatency}ms, Total Sync Time = ${mysqlToMongoTotalTime}ms`);
 
-    // 🔹 2️⃣ MongoDB → MySQL
+    // 2️⃣ MongoDB → MySQL Messung
     let startLatencyMongoToMySQL = Date.now();
 
-    for (let d of data) {
-        await mongoFunc(operation === "delete" ? d.id : d);
+    if (operation === "delete") {
+        for (let d of data) {
+            await mongoFunc(d.id); // Delete Operation nur mit ID
+        }
+    } else {
+        for (let d of data) {
+            await mongoFunc(d);
+        }
     }
 
-    while (await countMySQL("DATA") !== expectedCount) {
+    while (await countMySQL("DATA") < expectedCount) {
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
     }
 
     let endLatencyMongoToMySQL = Date.now();
     let mongoToMysqlLatency = endLatencyMongoToMySQL - startLatencyMongoToMySQL;
 
+    // Warten, bis alle Datensätze synchronisiert sind
     let startTotalSyncMongoToMySQL = Date.now();
     await waitForSync(expectedCount);
     let endTotalSyncMongoToMySQL = Date.now();
